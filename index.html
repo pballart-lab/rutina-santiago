@@ -1,0 +1,1086 @@
+<!DOCTYPE html>
+<html lang="ca">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>P. Transitòri 26-27 - Pla Integral</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            background-color: #f8fafc;
+            color: #1e293b;
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 350px;
+            max-height: 400px;
+        }
+        @media (min-width: 768px) {
+            .chart-container {
+                height: 400px;
+            }
+        }
+        .nav-btn.active {
+            background-color: #2563eb;
+            color: white;
+            font-weight: 600;
+        }
+        /* Pissarra Tàctica Fluida i Responsiva en HTML/CSS pur (Sense SVG) */
+        .tactical-board {
+            background-color: #16a34a;
+            border: 2px solid #ffffff;
+            position: relative;
+            border-radius: 0.75rem;
+            overflow: hidden;
+            width: 100%;
+            aspect-ratio: 16 / 10;
+            box-shadow: inset 0 0 30px rgba(0, 0, 0, 0.25);
+        }
+        /* Línies del camp de futbol tàctic */
+        .field-half-line {
+            position: absolute;
+            left: 50%;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background-color: rgba(255, 255, 255, 0.5);
+            pointer-events: none;
+        }
+        .field-center-circle {
+            position: absolute;
+            left: 50%;
+            top: 50%;
+            width: 20%;
+            aspect-ratio: 1;
+            border: 2px solid rgba(255, 255, 255, 0.5);
+            border-radius: 50%;
+            transform: translate(-50%, -50%);
+            pointer-events: none;
+        }
+        .field-penalty-box-left {
+            position: absolute;
+            left: 0;
+            top: 15%;
+            bottom: 15%;
+            width: 15%;
+            border: 2px solid rgba(255, 255, 255, 0.5);
+            border-left: none;
+            pointer-events: none;
+        }
+        .field-penalty-box-right {
+            position: absolute;
+            right: 0;
+            top: 15%;
+            bottom: 15%;
+            width: 15%;
+            border: 2px solid rgba(255, 255, 255, 0.5);
+            border-right: none;
+            pointer-events: none;
+        }
+        /* Elements de dibuix tàctic */
+        .cone {
+            width: 12px;
+            height: 12px;
+            background-color: #f97316; /* Taronja per als cons */
+            border-radius: 50%;
+            position: absolute;
+            border: 2px solid white;
+            transform: translate(-50%, -50%);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            z-index: 10;
+        }
+        .player {
+            width: 14px;
+            height: 14px;
+            background-color: #2563eb; /* Blau Premium */
+            border-radius: 50%;
+            position: absolute;
+            border: 2px solid white;
+            transform: translate(-50%, -50%);
+            z-index: 20;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+        }
+        .player-sombra {
+            width: 14px;
+            height: 14px;
+            background-color: #db2777; /* Rosa */
+            border-radius: 50%;
+            position: absolute;
+            border: 2px solid white;
+            transform: translate(-50%, -50%);
+            z-index: 20;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+        }
+        .hide {
+            display: none !important;
+        }
+        /* Transició de completat per a les targetes */
+        .card-completed {
+            opacity: 0.6;
+            background-color: #f1f5f9;
+            border-color: #cbd5e1;
+        }
+        .card-completed h3 {
+            text-decoration: line-through;
+            color: #64748b;
+        }
+        
+        /* Animació pels botons de dia del resum */
+        .day-card {
+            transition: all 0.2s ease-in-out;
+        }
+        .day-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        .btn-anar-hi {
+            transition: background-color 0.2s;
+        }
+        .btn-anar-hi:hover {
+            background-color: rgba(37, 99, 235, 0.1);
+        }
+    </style>
+</head>
+<body class="flex flex-col md:flex-row h-screen overflow-hidden">
+
+    <!-- Chosen Palette: Clean Blue and White palette with dark slate side navigation, Emerald and Orange accents -->
+    
+    <!-- Application Structure Plan: The SPA is a comprehensive 6-Week dashboard. A dropdown in the sidebar allows users to dynamically switch between weeks. The "Resum" tab builds the week's schedule dynamically with clickable session links that route the user directly to the corresponding Gym (A/B) or Field (1/2) tab. Depending on the selected week, only the relevant Gym and Field routines are made available (e.g., Week 1 only has Field Session 1). The "Control (sRPE)" logger dynamically generates inputs for every active session of the selected week for both athletes, calculating their total load and plotting it directly into the central dual-Y axis Chart.js graph. -->
+    
+    <!-- Visualization & Content Choices:
+    1. Sidebar Selector: Easy context switching for weeks.
+    2. Dynamic Schedule Grid: Generates individual "Anar-hi" buttons for each session (critical for double sessions).
+    3. Dual-Axis Chart.js: Overlays real UA loads on top of theoretical Volume/Intensity.
+    4. HTML/CSS Tactical Fields: No SVGs. Fully fluid and responsive.
+    5. External Video Links: Replaces embedded iframes to ensure blazing-fast load times.
+    -->
+
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+
+    <!-- Barra de navegació lateral -->
+    <nav class="bg-slate-950 text-white w-full md:w-64 flex-shrink-0 md:h-full flex flex-col shadow-xl z-20">
+        <div class="p-6 text-center border-b border-slate-800">
+            <div class="text-5xl mb-3 flex justify-center items-center gap-1">
+                <span>🏃‍♂️</span><span class="text-3xl text-blue-400">⚡</span>
+            </div>
+            <h1 class="text-xl font-bold tracking-tight text-blue-100">P. Transitòri 26-27</h1>
+            
+            <select id="week-selector" onchange="changeWeek(this.value)" class="mt-4 w-full bg-slate-800 text-white text-sm font-semibold py-2.5 px-3 rounded-lg border border-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer transition-colors hover:bg-slate-700">
+                <option value="1">Setmana 1: Adaptació</option>
+                <option value="2">Setmana 2: Introducció</option>
+                <option value="3">Setmana 3: Acumulació</option>
+                <option value="4">Setmana 4: Pic de Volum</option>
+                <option value="5">Setmana 5: Optimització</option>
+                <option value="6">Setmana 6: Tapering</option>
+            </select>
+            
+            <p class="text-[10px] text-slate-400 mt-3 tracking-widest uppercase">Miquel & Pep Santiago</p>
+        </div>
+        <div class="flex flex-row md:flex-col p-4 gap-2 overflow-x-auto md:overflow-visible flex-grow">
+            <button onclick="navigate('resum')" id="btn-resum" class="nav-btn active flex-1 md:flex-none text-left px-4 py-3 rounded-lg transition-all whitespace-nowrap flex items-center gap-2"><span class="text-lg">📊</span> Resum Setmanal</button>
+            <button onclick="navigate('gimnas')" id="btn-gimnas" class="nav-btn flex-1 md:flex-none text-left px-4 py-3 rounded-lg transition-all whitespace-nowrap flex items-center gap-2"><span class="text-lg">🏋️</span> Rutines Gimnàs</button>
+            <button onclick="navigate('camp')" id="btn-camp" class="nav-btn flex-1 md:flex-none text-left px-4 py-3 rounded-lg transition-all whitespace-nowrap flex items-center gap-2"><span class="text-lg">⚽</span> Sessions Camp</button>
+            <button onclick="navigate('control')" id="btn-control" class="nav-btn flex-1 md:flex-none text-left px-4 py-3 rounded-lg transition-all whitespace-nowrap flex items-center gap-2"><span class="text-lg">⏱️</span> Control d'Esforç</button>
+        </div>
+        <div class="p-4 border-t border-slate-800 text-xs text-slate-400 text-center font-medium leading-relaxed">
+            Pere Ballart Sargatal<br><span class="opacity-75">Preparador Físic</span>
+        </div>
+    </nav>
+
+    <!-- Contingut principal -->
+    <main class="flex-1 overflow-y-auto bg-slate-50 p-4 md:p-8">
+        
+        <!-- Header dinàmic del programa -->
+        <header class="mb-6 bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div>
+                <span id="header-week-badge" class="bg-blue-100 text-blue-800 text-xs font-bold px-3 py-1 rounded-full uppercase tracking-wider">Setmana 1: Adaptació</span>
+                <h2 id="header-title" class="text-2xl font-black text-slate-800 mt-2">Resum de la Planificació</h2>
+                <p id="header-desc" class="text-sm text-slate-500 mt-1">Mètode d'alt rendiment per evitar lesions de creixement i rigidesa tendinosa.</p>
+            </div>
+            <!-- Indicador de progrés de la sessió activa (Només es veu a Gimnàs/Camp) -->
+            <div id="session-progress-container" class="w-full md:w-64 bg-slate-100 p-4 rounded-xl border border-slate-200 hide transition-all">
+                <div class="flex justify-between text-xs font-bold text-slate-700 mb-1">
+                    <span>PROGRÉS DE LA SESSIÓ</span>
+                    <span id="progress-text">0% (0 de 7)</span>
+                </div>
+                <div class="w-full bg-slate-200 h-2.5 rounded-full overflow-hidden">
+                    <div id="progress-bar" class="bg-blue-600 h-full transition-all duration-500" style="width: 0%"></div>
+                </div>
+            </div>
+        </header>
+
+        <!-- SECCIÓ 1: RESUM -->
+        <section id="resum" class="max-w-5xl mx-auto block space-y-6 animate-fade-in">
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
+                <h3 class="text-xl font-bold mb-4 text-slate-800">Càrrega de Pretemporada (6 Setmanes)</h3>
+                <p class="text-sm text-slate-500 mb-4">Evolució teòrica del volum (barres) i intensitat (línia vermella). A mesura que registreu l'esforç a la pestanya corresponent, les línies verda i taronja mostraran la vostra fatiga real (UA).</p>
+                <div class="chart-container">
+                    <canvas id="periodizationChart"></canvas>
+                </div>
+            </div>
+
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-100">
+                <h3 class="text-xl font-bold mb-4 text-slate-800 flex items-center gap-2">
+                    Microcicle de Treball <span id="schedule-week-title" class="text-blue-600">Setmana 1</span>
+                </h3>
+                <p class="text-sm text-slate-500 mb-4">Feu clic sobre la sessió (Gimnàs o Camp) per anar directament als exercicis que us toquen fer avui.</p>
+                <div id="weekly-schedule-grid" class="grid grid-cols-1 md:grid-cols-7 gap-3">
+                    <!-- Aquest contenidor s'omple dinàmicament via JavaScript -->
+                </div>
+            </div>
+        </section>
+
+        <!-- SECCIÓ 2: GIMNÀS -->
+        <section id="gimnas" class="max-w-5xl mx-auto hide space-y-6">
+            <div id="gym-tabs-container" class="flex gap-4 mb-4">
+                <!-- S'omple dinàmicament en base a la setmana -->
+            </div>
+
+            <!-- Contenidors de targetes -->
+            <div id="container-rutina-A" class="grid grid-cols-1 lg:grid-cols-2 gap-6"></div>
+            <div id="container-rutina-B" class="grid grid-cols-1 lg:grid-cols-2 gap-6 hide"></div>
+        </section>
+
+        <!-- SECCIÓ DE CAMP -->
+        <section id="camp" class="max-w-5xl mx-auto hide">
+            <div id="camp-tabs-container" class="flex gap-4 mb-6">
+                <!-- S'omple dinàmicament en base a la setmana -->
+            </div>
+
+            <!-- Contenidors de targetes de camp -->
+            <div id="container-camp-1" class="space-y-6"></div>
+            <div id="container-camp-2" class="space-y-6 hide"></div>
+        </section>
+
+        <!-- SECCIÓ DEL CALCULADOR sRPE SETMANAL -->
+        <section id="control" class="max-w-5xl mx-auto hide">
+            <header class="mb-8 text-center">
+                <h2 class="text-3xl font-extrabold text-slate-800 mb-2">Control d'Esforç (<span id="rpe-week-title">Setmana 1</span>)</h2>
+                <p class="text-lg text-slate-600">Introduïu els minuts (temps) i l'RPE (esforç de l'1 al 10) de cada sessió de la setmana. Això calcularà la vostra Càrrega Interna (UA) al gràfic central.</p>
+            </header>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+                
+                <!-- Columna Miquel -->
+                <div class="bg-white p-6 rounded-2xl shadow-md border-t-4 border-emerald-500 flex flex-col h-full">
+                    <h3 class="text-xl font-bold text-emerald-700 mb-4 flex items-center gap-2">
+                        <span>👦</span> Càrrega de Miquel
+                    </h3>
+                    <div class="space-y-3 flex-grow" id="rpe-inputs-miquel">
+                        <!-- Generat dinàmicament -->
+                    </div>
+                    <div class="mt-6 text-center pt-4 border-t border-slate-100">
+                        <div class="text-xs font-bold text-slate-400 uppercase tracking-widest">Total Setmana</div>
+                        <div id="m-total-ua" class="text-4xl font-black text-emerald-600 mt-1">0 UA</div>
+                    </div>
+                </div>
+
+                <!-- Columna Pep -->
+                <div class="bg-white p-6 rounded-2xl shadow-md border-t-4 border-orange-500 flex flex-col h-full">
+                    <h3 class="text-xl font-bold text-orange-700 mb-4 flex items-center gap-2">
+                        <span>👦</span> Càrrega de Pep
+                    </h3>
+                    <div class="space-y-3 flex-grow" id="rpe-inputs-pep">
+                        <!-- Generat dinàmicament -->
+                    </div>
+                    <div class="mt-6 text-center pt-4 border-t border-slate-100">
+                        <div class="text-xs font-bold text-slate-400 uppercase tracking-widest">Total Setmana</div>
+                        <div id="p-total-ua" class="text-4xl font-black text-orange-600 mt-1">0 UA</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex gap-4">
+                <button onclick="calculateWeeklyRPE()" class="w-full bg-slate-800 text-white font-bold py-4 rounded-xl text-lg hover:bg-slate-700 transition shadow-lg">Calcular i Actualitzar Gràfic Central</button>
+            </div>
+            
+            <div id="calc-feedback" class="mt-4 text-center font-semibold text-emerald-600 hide">
+                ✅ Dades guardades i gràfic actualitzat amb èxit! Pots anar a la pestanya 'Resum' per veure-ho.
+            </div>
+
+        </section>
+
+    </main>
+
+    <script>
+        // --- DADES ESTRUCTURALS DE LES 6 SETMANES ---
+        // Conté la informació per generar dinàmicament els menús, les pestanyes i els formularis RPE.
+        const weeksData = {
+            1: {
+                title: "Setmana 1: Adaptació",
+                desc: "Adaptació anatòmica i mecànica inicial. Sense dobles sessions.",
+                schedule: [
+                    { day: "DILLUNS", type: "Sessió Única", bg: "bg-blue-50 border-blue-200", textCol: "text-blue-900", sessions: [{ time: "Matí", name: "Gimnàs A (Cames)", type: "gimnas", tab: "A" }] },
+                    { day: "DIMARTS", type: "Sessió Única", bg: "bg-blue-50 border-blue-200", textCol: "text-blue-900", sessions: [{ time: "Matí", name: "Gimnàs B (Tronc)", type: "gimnas", tab: "B" }] },
+                    { day: "DIMECRES", type: "Descans Total", bg: "bg-slate-100 border-slate-200", textCol: "text-slate-500", sessions: [] },
+                    { day: "DIJOUS", type: "Sessió Única", bg: "bg-blue-50 border-blue-200", textCol: "text-blue-900", sessions: [{ time: "Matí", name: "Gimnàs A (Cames)", type: "gimnas", tab: "A" }] },
+                    { day: "DIVENDRES", type: "Sessió Única", bg: "bg-emerald-50 border-emerald-200", textCol: "text-emerald-900", sessions: [{ time: "Tarda", name: "Camp 1 (Velocitat)", type: "camp", tab: "1" }] },
+                    { day: "DISSABTE", type: "Descans Total", bg: "bg-slate-100 border-slate-200", textCol: "text-slate-500", sessions: [] },
+                    { day: "DIUMENGE", type: "Recuperació", bg: "bg-orange-50 border-orange-100", textCol: "text-orange-900", sessions: [] }
+                ],
+                availableGym: ['A', 'B'],
+                availableCamp: ['1']
+            },
+            2: {
+                title: "Setmana 2: Introducció",
+                desc: "Introducció al volum de competició. Primera doble sessió.",
+                schedule: [
+                    { day: "DILLUNS", type: "Sessió Única", bg: "bg-blue-50 border-blue-200", textCol: "text-blue-900", sessions: [{ time: "Matí", name: "Gimnàs A (Cames)", type: "gimnas", tab: "A" }] },
+                    { day: "DIMARTS", type: "Doble Sessió", bg: "bg-indigo-50 border-indigo-200", textCol: "text-indigo-900", sessions: [{ time: "Matí", name: "Gimnàs B", type: "gimnas", tab: "B" }, { time: "Tarda", name: "Camp 1", type: "camp", tab: "1" }] },
+                    { day: "DIMECRES", type: "Descans Total", bg: "bg-slate-100 border-slate-200", textCol: "text-slate-500", sessions: [] },
+                    { day: "DIJOUS", type: "Sessió Única", bg: "bg-blue-50 border-blue-200", textCol: "text-blue-900", sessions: [{ time: "Matí", name: "Gimnàs A (Cames)", type: "gimnas", tab: "A" }] },
+                    { day: "DIVENDRES", type: "Sessió Única", bg: "bg-emerald-50 border-emerald-200", textCol: "text-emerald-900", sessions: [{ time: "Tarda", name: "Camp 2 (Agilitat)", type: "camp", tab: "2" }] },
+                    { day: "DISSABTE", type: "Descans Total", bg: "bg-slate-100 border-slate-200", textCol: "text-slate-500", sessions: [] },
+                    { day: "DIUMENGE", type: "Recuperació", bg: "bg-orange-50 border-orange-100", textCol: "text-orange-900", sessions: [] }
+                ],
+                availableGym: ['A', 'B'],
+                availableCamp: ['1', '2']
+            },
+            3: {
+                title: "Setmana 3: Acumulació",
+                desc: "Fase de construcció base d'acumulació. La càrrega augmenta amb dues dobles sessions.",
+                schedule: [
+                    { day: "DILLUNS", type: "Sessió Única", bg: "bg-blue-50 border-blue-200", textCol: "text-blue-900", sessions: [{ time: "Matí", name: "Gimnàs A", type: "gimnas", tab: "A" }] },
+                    { day: "DIMARTS", type: "Doble Sessió", bg: "bg-indigo-50 border-indigo-200", textCol: "text-indigo-900", sessions: [{ time: "Matí", name: "Gimnàs B", type: "gimnas", tab: "B" }, { time: "Tarda", name: "Camp 1", type: "camp", tab: "1" }] },
+                    { day: "DIMECRES", type: "Descans Total", bg: "bg-slate-100 border-slate-200", textCol: "text-slate-500", sessions: [] },
+                    { day: "DIJOUS", type: "Sessió Única", bg: "bg-blue-50 border-blue-200", textCol: "text-blue-900", sessions: [{ time: "Matí", name: "Gimnàs A", type: "gimnas", tab: "A" }] },
+                    { day: "DIVENDRES", type: "Doble Sessió", bg: "bg-indigo-50 border-indigo-200", textCol: "text-indigo-900", sessions: [{ time: "Matí", name: "Gimnàs B", type: "gimnas", tab: "B" }, { time: "Tarda", name: "Camp 2", type: "camp", tab: "2" }] },
+                    { day: "DISSABTE", type: "Descans Total", bg: "bg-slate-100 border-slate-200", textCol: "text-slate-500", sessions: [] },
+                    { day: "DIUMENGE", type: "Recuperació", bg: "bg-orange-50 border-orange-100", textCol: "text-orange-900", sessions: [] }
+                ],
+                availableGym: ['A', 'B'],
+                availableCamp: ['1', '2']
+            },
+            4: {
+                title: "Setmana 4: Pic de Volum",
+                desc: "Setmana d'impacte amb el volum més alt de tota la pretemporada (3 dobles sessions).",
+                schedule: [
+                    { day: "DILLUNS", type: "Doble Sessió", bg: "bg-indigo-50 border-indigo-200", textCol: "text-indigo-900", sessions: [{ time: "Matí", name: "Gimnàs A", type: "gimnas", tab: "A" }, { time: "Tarda", name: "Camp 1", type: "camp", tab: "1" }] },
+                    { day: "DIMARTS", type: "Doble Sessió", bg: "bg-indigo-50 border-indigo-200", textCol: "text-indigo-900", sessions: [{ time: "Matí", name: "Gimnàs B", type: "gimnas", tab: "B" }, { time: "Tarda", name: "Camp 2", type: "camp", tab: "2" }] },
+                    { day: "DIMECRES", type: "Descans Total", bg: "bg-slate-100 border-slate-200", textCol: "text-slate-500", sessions: [] },
+                    { day: "DIJOUS", type: "Sessió Única", bg: "bg-blue-50 border-blue-200", textCol: "text-blue-900", sessions: [{ time: "Matí", name: "Gimnàs A", type: "gimnas", tab: "A" }] },
+                    { day: "DIVENDRES", type: "Doble Sessió", bg: "bg-indigo-50 border-indigo-200", textCol: "text-indigo-900", sessions: [{ time: "Matí", name: "Gimnàs B", type: "gimnas", tab: "B" }, { time: "Tarda", name: "Camp 1", type: "camp", tab: "1" }] },
+                    { day: "DISSABTE", type: "Descans Total", bg: "bg-slate-100 border-slate-200", textCol: "text-slate-500", sessions: [] },
+                    { day: "DIUMENGE", type: "Recuperació", bg: "bg-orange-50 border-orange-100", textCol: "text-orange-900", sessions: [] }
+                ],
+                availableGym: ['A', 'B'],
+                availableCamp: ['1', '2']
+            },
+            5: {
+                title: "Setmana 5: Optimització",
+                desc: "Pic d'intensitat al camp. Retirem el treball de cames al gimnàs (sense Rutina A).",
+                schedule: [
+                    { day: "DILLUNS", type: "Sessió Única", bg: "bg-emerald-50 border-emerald-200", textCol: "text-emerald-900", sessions: [{ time: "Tarda", name: "Camp 2 (Agilitat)", type: "camp", tab: "2" }] },
+                    { day: "DIMARTS", type: "Doble Sessió", bg: "bg-indigo-50 border-indigo-200", textCol: "text-indigo-900", sessions: [{ time: "Matí", name: "Gimnàs B", type: "gimnas", tab: "B" }, { time: "Tarda", name: "Camp 1", type: "camp", tab: "1" }] },
+                    { day: "DIMECRES", type: "Descans Total", bg: "bg-slate-100 border-slate-200", textCol: "text-slate-500", sessions: [] },
+                    { day: "DIJOUS", type: "Doble Sessió", bg: "bg-indigo-50 border-indigo-200", textCol: "text-indigo-900", sessions: [{ time: "Matí", name: "Gimnàs B", type: "gimnas", tab: "B" }, { time: "Tarda", name: "Camp 2", type: "camp", tab: "2" }] },
+                    { day: "DIVENDRES", type: "Sessió Única", bg: "bg-emerald-50 border-emerald-200", textCol: "text-emerald-900", sessions: [{ time: "Tarda", name: "Camp 1 (Velocitat)", type: "camp", tab: "1" }] },
+                    { day: "DISSABTE", type: "Descans Total", bg: "bg-slate-100 border-slate-200", textCol: "text-slate-500", sessions: [] },
+                    { day: "DIUMENGE", type: "Recuperació", bg: "bg-orange-50 border-orange-100", textCol: "text-orange-900", sessions: [] }
+                ],
+                availableGym: ['B'], // A no està disponible
+                availableCamp: ['1', '2']
+            },
+            6: {
+                title: "Setmana 6: Tapering",
+                desc: "Posada a punt (Cames fresques). Volum reduït dràsticament abans de la lliga.",
+                schedule: [
+                    { day: "DILLUNS", type: "Sessió Única", bg: "bg-emerald-50 border-emerald-200", textCol: "text-emerald-900", sessions: [{ time: "Matí", name: "Camp 1 (Express)", type: "camp", tab: "1" }] },
+                    { day: "DIMARTS", type: "Doble Sessió", bg: "bg-indigo-50 border-indigo-200", textCol: "text-indigo-900", sessions: [{ time: "Matí", name: "Gimnàs B", type: "gimnas", tab: "B" }, { time: "Tarda", name: "Camp 1", type: "camp", tab: "1" }] },
+                    { day: "DIMECRES", type: "Descans Total", bg: "bg-slate-100 border-slate-200", textCol: "text-slate-500", sessions: [] },
+                    { day: "DIJOUS", type: "Doble Sessió", bg: "bg-indigo-50 border-indigo-200", textCol: "text-indigo-900", sessions: [{ time: "Matí", name: "Gimnàs B", type: "gimnas", tab: "B" }, { time: "Tarda", name: "Camp 2", type: "camp", tab: "2" }] },
+                    { day: "DIVENDRES", type: "Sessió Única", bg: "bg-emerald-50 border-emerald-200", textCol: "text-emerald-900", sessions: [{ time: "Matí", name: "Camp 1 (Express)", type: "camp", tab: "1" }] },
+                    { day: "DISSABTE", type: "Descans Total", bg: "bg-slate-100 border-slate-200", textCol: "text-slate-500", sessions: [] },
+                    { day: "DIUMENGE", type: "LLIGA 🏆", bg: "bg-orange-100 border-orange-300", textCol: "text-orange-900", sessions: [] }
+                ],
+                availableGym: ['B'],
+                availableCamp: ['1', '2']
+            }
+        };
+
+        // Objecte per guardar els valors RPE (Suporta fins a 7 sessions setmanals per W4)
+        const rpeData = {
+            1: { m: Array(4).fill(''), p: Array(4).fill(''), rpe_m: Array(4).fill('0'), rpe_p: Array(4).fill('0'), totalM: null, totalP: null },
+            2: { m: Array(5).fill(''), p: Array(5).fill(''), rpe_m: Array(5).fill('0'), rpe_p: Array(5).fill('0'), totalM: null, totalP: null },
+            3: { m: Array(6).fill(''), p: Array(6).fill(''), rpe_m: Array(6).fill('0'), rpe_p: Array(6).fill('0'), totalM: null, totalP: null },
+            4: { m: Array(7).fill(''), p: Array(7).fill(''), rpe_m: Array(7).fill('0'), rpe_p: Array(7).fill('0'), totalM: null, totalP: null },
+            5: { m: Array(6).fill(''), p: Array(6).fill(''), rpe_m: Array(6).fill('0'), rpe_p: Array(6).fill('0'), totalM: null, totalP: null },
+            6: { m: Array(6).fill(''), p: Array(6).fill(''), rpe_m: Array(6).fill('0'), rpe_p: Array(6).fill('0'), totalM: null, totalP: null }
+        };
+
+        // Variables d'Estat Global
+        let currentWeekNumber = 1;
+        let checkedState = { A: new Set(), B: new Set(), C1: new Set(), C2: new Set() };
+        let currentTab = 'resum';
+        let activeRoutine = 'A';
+        let activeFieldSession = '1';
+
+        // Inicialització quan es carrega el document
+        document.addEventListener('DOMContentLoaded', function() {
+            initChart();
+            renderWeek(1);
+        });
+
+        function changeWeek(weekStr) {
+            currentWeekNumber = parseInt(weekStr);
+            // Netejem el checklist sempre que es canvia de setmana (una web app autònoma)
+            checkedState = { A: new Set(), B: new Set(), C1: new Set(), C2: new Set() };
+            document.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
+            document.querySelectorAll('.card-completed').forEach(c => c.classList.remove('card-completed'));
+            
+            renderWeek(currentWeekNumber);
+            navigate('resum');
+        }
+
+        function renderWeek(weekNum) {
+            const data = weeksData[weekNum];
+            
+            // Textos del Resum
+            document.getElementById('header-week-badge').innerText = data.title;
+            document.getElementById('schedule-week-title').innerText = `(${data.title})`;
+            
+            // Graella de dies
+            const grid = document.getElementById('weekly-schedule-grid');
+            grid.innerHTML = "";
+            const rpeInputsLabels = []; // Guardem les etiquetes de les sessions per la pestanya Control
+
+            data.schedule.forEach(day => {
+                const el = document.createElement('div');
+                el.className = `day-card ${day.bg} p-3 rounded-lg text-center border h-full flex flex-col`;
+                
+                let inner = `<div class="font-bold ${day.textCol} text-sm mb-1">${day.day}</div>
+                             <div class="text-xs font-semibold ${day.textCol} opacity-80 mb-2">${day.type}</div>`;
+                
+                if (day.sessions && day.sessions.length > 0) {
+                    const buttonsHtml = day.sessions.map(sess => {
+                        // Guardar nom de la sessió per RPE
+                        rpeInputsLabels.push(`${day.day.substring(0,2)} - ${sess.name}`);
+                        
+                        return `
+                        <button onclick="navigateAndSelect('${sess.type}', '${sess.tab}')" class="btn-anar-hi w-full flex items-center justify-between text-left bg-white/60 hover:bg-white/90 border border-${day.textCol.replace('text-','')} rounded p-1.5 mb-1 transition-colors">
+                            <div class="flex flex-col">
+                                <span class="text-[9px] uppercase font-bold text-slate-500">${sess.time}</span>
+                                <span class="text-xs font-semibold ${day.textCol}">${sess.name}</span>
+                            </div>
+                            <span class="text-[14px]">👉</span>
+                        </button>
+                        `;
+                    }).join('');
+                    inner += `<div class="mt-auto flex flex-col gap-1">${buttonsHtml}</div>`;
+                } else {
+                    if (day.day === "DIMECRES" || day.day === "DISSABTE") {
+                        inner += `<div class="text-2xl mt-auto py-2">😴</div>`;
+                    } else if (day.day === "DIUMENGE") {
+                        inner += `<div class="text-2xl mt-auto py-2">🌲</div>`;
+                    }
+                }
+                
+                el.innerHTML = inner;
+                grid.appendChild(el);
+            });
+
+            // Configuració de Botons de Pestanya Gimnàs i Camp (Ocultar/Mostrar si no toquen)
+            const gymTabs = document.getElementById('gym-tabs-container');
+            gymTabs.innerHTML = "";
+            if (data.availableGym.includes('A')) {
+                gymTabs.innerHTML += `<button onclick="toggleRoutine('A')" id="btn-rutina-A" class="flex-1 py-3 px-6 rounded-xl font-bold text-lg bg-white text-blue-600 border-2 border-blue-600 shadow-sm transition">Legs & Core 🦵 (A)</button>`;
+            }
+            if (data.availableGym.includes('B')) {
+                gymTabs.innerHTML += `<button onclick="toggleRoutine('B')" id="btn-rutina-B" class="flex-1 py-3 px-6 rounded-xl font-bold text-lg bg-white text-blue-600 border-2 border-blue-600 shadow-sm transition">Upper Body 💪 (B)</button>`;
+            }
+            if (data.availableGym.length > 0) {
+                activeRoutine = data.availableGym[0];
+                // Activar el botó correcte
+                setTimeout(() => toggleRoutine(activeRoutine), 0);
+            }
+
+            const campTabs = document.getElementById('camp-tabs-container');
+            campTabs.innerHTML = "";
+            if (data.availableCamp.includes('1')) {
+                campTabs.innerHTML += `<button onclick="toggleField('1')" id="btn-camp-1" class="flex-1 py-3 px-6 rounded-xl font-bold text-lg bg-white text-emerald-600 border-2 border-emerald-600 shadow-sm transition">Velocitat ⚡ (1)</button>`;
+            }
+            if (data.availableCamp.includes('2')) {
+                campTabs.innerHTML += `<button onclick="toggleField('2')" id="btn-camp-2" class="flex-1 py-3 px-6 rounded-xl font-bold text-lg bg-white text-emerald-600 border-2 border-emerald-600 shadow-sm transition">Agilitat 🔄 (2)</button>`;
+            }
+            if (data.availableCamp.length > 0) {
+                activeFieldSession = data.availableCamp[0];
+                setTimeout(() => toggleField(activeFieldSession), 0);
+            }
+
+            // Renderització del formulari RPE per la setmana activa
+            document.getElementById('rpe-week-title').innerText = data.title;
+            renderRPEForm(rpeInputsLabels, weekNum);
+            
+            updateProgress();
+        }
+
+        // --- RPE DYNAMIC FORM ---
+        function renderRPEForm(labels, weekNum) {
+            const mContainer = document.getElementById('rpe-inputs-miquel');
+            const pContainer = document.getElementById('rpe-inputs-pep');
+            mContainer.innerHTML = "";
+            pContainer.innerHTML = "";
+            
+            const savedData = rpeData[weekNum];
+
+            labels.forEach((label, idx) => {
+                const num = idx + 1;
+                // Miquel
+                mContainer.innerHTML += `
+                    <div class="flex items-center justify-between bg-slate-50 p-3 rounded-lg border border-slate-100">
+                        <span class="text-sm font-semibold text-slate-700 w-1/3 truncate" title="${label}">${label}</span>
+                        <div class="flex gap-2">
+                            <input type="number" id="m-min-${num}" value="${savedData.m[idx] || ''}" class="w-16 p-2 border rounded-md text-center text-sm font-bold text-emerald-700" placeholder="Min">
+                            <select id="m-rpe-${num}" class="w-16 p-2 border rounded-md text-center text-sm font-bold text-emerald-700 bg-white">
+                                <option value="0">RPE</option>
+                                ${[1,2,3,4,5,6,7,8,9,10].map(v => `<option value="${v}" ${savedData.rpe_m[idx] == v ? 'selected' : ''}>${v}</option>`).join('')}
+                            </select>
+                        </div>
+                    </div>
+                `;
+                // Pep
+                pContainer.innerHTML += `
+                    <div class="flex items-center justify-between bg-slate-50 p-3 rounded-lg border border-slate-100">
+                        <span class="text-sm font-semibold text-slate-700 w-1/3 truncate" title="${label}">${label}</span>
+                        <div class="flex gap-2">
+                            <input type="number" id="p-min-${num}" value="${savedData.p[idx] || ''}" class="w-16 p-2 border rounded-md text-center text-sm font-bold text-orange-700" placeholder="Min">
+                            <select id="p-rpe-${num}" class="w-16 p-2 border rounded-md text-center text-sm font-bold text-orange-700 bg-white">
+                                <option value="0">RPE</option>
+                                ${[1,2,3,4,5,6,7,8,9,10].map(v => `<option value="${v}" ${savedData.rpe_p[idx] == v ? 'selected' : ''}>${v}</option>`).join('')}
+                            </select>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            document.getElementById('m-total-ua').innerText = (savedData.totalM || 0) + ' UA';
+            document.getElementById('p-total-ua').innerText = (savedData.totalP || 0) + ' UA';
+            document.getElementById('calc-feedback').classList.add('hide');
+        }
+
+        function calculateWeeklyRPE() {
+            let totalMiquel = 0;
+            let totalPep = 0;
+            const currentWkData = rpeData[currentWeekNumber];
+            const numSessions = currentWkData.m.length;
+
+            // Recompte Miquel i guardat
+            for (let i = 1; i <= numSessions; i++) {
+                const minEl = document.getElementById(`m-min-${i}`);
+                const rpeEl = document.getElementById(`m-rpe-${i}`);
+                if(minEl && rpeEl) {
+                    let m = parseInt(minEl.value) || 0;
+                    let r = parseInt(rpeEl.value) || 0;
+                    currentWkData.m[i-1] = m || ''; 
+                    currentWkData.rpe_m[i-1] = r || '0'; 
+                    totalMiquel += (m * r);
+                }
+            }
+
+            // Recompte Pep i guardat
+            for (let i = 1; i <= numSessions; i++) {
+                const minEl = document.getElementById(`p-min-${i}`);
+                const rpeEl = document.getElementById(`p-rpe-${i}`);
+                if(minEl && rpeEl) {
+                    let m = parseInt(minEl.value) || 0;
+                    let r = parseInt(rpeEl.value) || 0;
+                    currentWkData.p[i-1] = m || '';
+                    currentWkData.rpe_p[i-1] = r || '0';
+                    totalPep += (m * r);
+                }
+            }
+
+            currentWkData.totalM = totalMiquel;
+            currentWkData.totalP = totalPep;
+
+            // Actualització visual texts
+            document.getElementById('m-total-ua').innerText = totalMiquel + ' UA';
+            document.getElementById('p-total-ua').innerText = totalPep + ' UA';
+
+            // Actualització al Gràfic ChartJS segons l'índex de la setmana (0 a 5)
+            window.appChart.data.datasets[2].data[currentWeekNumber - 1] = totalMiquel > 0 ? totalMiquel : null;
+            window.appChart.data.datasets[3].data[currentWeekNumber - 1] = totalPep > 0 ? totalPep : null;
+            window.appChart.update();
+
+            document.getElementById('calc-feedback').classList.remove('hide');
+        }
+
+        // --- NAVIGATION & UI LOGIC ---
+        function navigate(viewId) {
+            currentTab = viewId;
+            ['resum', 'gimnas', 'camp', 'control'].forEach(s => {
+                const el = document.getElementById(s);
+                const btn = document.getElementById('btn-' + s);
+                if (el) el.classList.add('hide');
+                if (btn) btn.classList.remove('active');
+            });
+
+            document.getElementById(viewId).classList.remove('hide');
+            document.getElementById('btn-' + viewId).classList.add('active');
+
+            const progressContainer = document.getElementById('session-progress-container');
+            const headerTitle = document.getElementById('header-title');
+            const headerDesc = document.getElementById('header-desc');
+
+            if (viewId === 'resum') {
+                headerTitle.innerText = "Resum de la Planificació";
+                headerDesc.innerText = "Mètode d'alt rendiment per evitar lesions de creixement i rigidesa tendinosa.";
+                progressContainer.classList.add('hide');
+            } else if (viewId === 'gimnas') {
+                headerTitle.innerText = "Rutines de Gimnàs (REX)";
+                headerDesc.innerText = "Optimització de la coordinació intramuscular i la prevenció biomecànica.";
+                progressContainer.classList.remove('hide');
+                toggleRoutine(activeRoutine);
+            } else if (viewId === 'camp') {
+                headerTitle.innerText = "Sessions de Camp (Gespa)";
+                headerDesc.innerText = "Agilitat tridimensional, presa de decisions i velocitat específica.";
+                progressContainer.classList.remove('hide');
+                toggleField(activeFieldSession);
+            } else if (viewId === 'control') {
+                headerTitle.innerText = `Control d'Esforç (${weeksData[currentWeekNumber].title})`;
+                headerDesc.innerText = "Càlcul matemàtic de la fatiga setmanal individual per l'ajust de la sobrecàrrega.";
+                progressContainer.classList.add('hide');
+                document.getElementById('calc-feedback').classList.add('hide');
+            }
+        }
+
+        function navigateAndSelect(viewId, subTab) {
+            navigate(viewId);
+            if (viewId === 'gimnas') toggleRoutine(subTab);
+            else if (viewId === 'camp') toggleField(subTab);
+        }
+
+        function toggleRoutine(type) {
+            if (!weeksData[currentWeekNumber].availableGym.includes(type)) return;
+            
+            activeRoutine = type;
+            const btnA = document.getElementById('btn-rutina-A');
+            const btnB = document.getElementById('btn-rutina-B');
+            
+            if (type === 'A') {
+                document.getElementById('container-rutina-A').classList.remove('hide');
+                document.getElementById('container-rutina-B').classList.add('hide');
+                if(btnA) btnA.className = "flex-1 py-3 px-6 rounded-xl font-bold text-lg bg-blue-600 text-white shadow-md transition";
+                if(btnB) btnB.className = "flex-1 py-3 px-6 rounded-xl font-bold text-lg bg-white text-blue-600 border-2 border-blue-600 shadow-sm transition opacity-50";
+            } else {
+                document.getElementById('container-rutina-A').classList.add('hide');
+                document.getElementById('container-rutina-B').classList.remove('hide');
+                if(btnB) btnB.className = "flex-1 py-3 px-6 rounded-xl font-bold text-lg bg-blue-600 text-white shadow-md transition";
+                if(btnA) btnA.className = "flex-1 py-3 px-6 rounded-xl font-bold text-lg bg-white text-blue-600 border-2 border-blue-600 shadow-sm transition opacity-50";
+            }
+            updateProgress();
+        }
+
+        function toggleField(type) {
+            if (!weeksData[currentWeekNumber].availableCamp.includes(type)) return;
+
+            activeFieldSession = type;
+            const btn1 = document.getElementById('btn-camp-1');
+            const btn2 = document.getElementById('btn-camp-2');
+            
+            if (type === '1') {
+                document.getElementById('container-camp-1').classList.remove('hide');
+                document.getElementById('container-camp-2').classList.add('hide');
+                if(btn1) btn1.className = "flex-1 py-3 px-6 rounded-xl font-bold text-lg bg-emerald-600 text-white shadow-md transition";
+                if(btn2) btn2.className = "flex-1 py-3 px-6 rounded-xl font-bold text-lg bg-white text-emerald-600 border-2 border-emerald-600 shadow-sm transition opacity-50";
+            } else {
+                document.getElementById('container-camp-1').classList.add('hide');
+                document.getElementById('container-camp-2').classList.remove('hide');
+                if(btn2) btn2.className = "flex-1 py-3 px-6 rounded-xl font-bold text-lg bg-emerald-600 text-white shadow-md transition";
+                if(btn1) btn1.className = "flex-1 py-3 px-6 rounded-xl font-bold text-lg bg-white text-emerald-600 border-2 border-emerald-600 shadow-sm transition opacity-50";
+            }
+            updateProgress();
+        }
+
+        function toggleCheckCard(checkbox, cardId, listKey) {
+            const card = document.getElementById(cardId);
+            if (checkbox.checked) {
+                card.classList.add('card-completed');
+                checkedState[listKey].add(cardId);
+            } else {
+                card.classList.remove('card-completed');
+                checkedState[listKey].delete(cardId);
+            }
+            updateProgress();
+        }
+
+        function updateProgress() {
+            let total = 7;
+            let checked = 0;
+            if (currentTab === 'gimnas') {
+                total = 7;
+                checked = checkedState[activeRoutine].size;
+            } else if (currentTab === 'camp') {
+                total = 3;
+                checked = activeFieldSession === '1' ? checkedState['C1'].size : checkedState['C2'].size;
+            }
+            const percentage = Math.round((checked / total) * 100);
+            document.getElementById('progress-bar').style.width = percentage + "%";
+            document.getElementById('progress-text').innerText = `${percentage}% (${checked} de ${total})`;
+        }
+
+        // --- DADES D'EXERCICIS ---
+        const routineAData = [
+            { id: "gym-a1", title: "Esquat Goblet amb manuella", link: "https://www.youtube.com/watch?v=lRYBbchqxtI", load: "3 sèries x 10 repeticions | Descans: 90s", desc: "Subjecteu una manuella verticalment davant del pit. Baixeu el maluc fins que les cuixes estiguin paral·leles al terra, mantenint el tronc totalment dret.", warning: "No aixequeu els talons del terra en baixar i eviteu que l'esquena s'inclini excessivament." },
+            { id: "gym-a2", title: "Premsa de Cames (Leg Press)", link: "https://www.youtube.com/watch?v=EotSw18oR9w", load: "3 sèries x 10 repeticions | Descans: 90s", desc: "A la màquina de premsa, baixeu el pes flexionant els genolls fins a 90 graus. Empenyeu fort amb tota la planta dels peus sense bloquejar els genolls.", warning: "No ajunteu mai els genolls cap endins (valgut) durant la fase d'empenta." },
+            { id: "gym-a3", title: "Esquat Búlgar amb manuelles", link: "https://www.youtube.com/watch?v=OqHQuEBm-Ik", load: "3 sèries x 10 reps/cama | Descans: 90s", desc: "Peu posterior sobre un banc de 30-40 cm. Amb una manuella a cada mà, baixeu el maluc de manera completament vertical.", warning: "El genoll davanter ha d'apuntar sempre en la mateixa direcció que els dits del peu." },
+            { id: "gym-a4", title: "Curl de Cama (Leg Curl)", link: "https://www.youtube.com/watch?v=lGNeJsdqJwg", load: "3 sèries x 12 repeticions | Descans: 60s", desc: "A la màquina, flexioneu les cames portant el corró cap als glutis. Controleu la tornada del pes lentament (3 segons de baixada).", warning: "No aixequeu el maluc de la cadira mentre realitzeu la força." },
+            { id: "gym-a5", title: "Aductors de Copenhaguen", link: "https://www.youtube.com/watch?v=R6-0oI9gQnQ", load: "3 sèries x 8 reps/costat | Descans: 60s", desc: "De costat. El company subjecta la cama de dalt sobre el banc. Aixequeu el maluc fins que el cos formi una línia recta.", warning: "Mantingueu l'esquena i la pelvis rectes. No us doblegueu pel maluc cap enrere." },
+            { id: "gym-a6", title: "Elevació de Bessons (Calf Raises)", link1: "https://www.youtube.com/watch?v=95itLfMBG40", link2: "https://www.youtube.com/watch?v=sNqa1ad2qIQ", isDoubleVideo: true, load: "3 sèries x 15 repeticions | Descans: 60s", desc: "Baixeu els talons des d'un esglaó per notar l'estirament, i pugeu de manera explosiva i potent.", warning: "No feu rebots ràpids. Atureu-vos 1 segon a dalt i 1 segon a la part baixa." },
+            { id: "gym-a7", title: "Planxa abdominal dinàmica (Plank Tap)", link: "https://www.youtube.com/watch?v=raj21-0U8MM", load: "3 sèries x 10 tocs/espatlla | Descans: 45s", desc: "En posició de planxa sobre les mans, toqueu l'espatlla contrària de forma alternada.", warning: "No roteu el maluc d'un costat a l'altre durant els tocs de mans." }
+        ];
+
+        const routineBData = [
+            { id: "gym-b1", title: "Tracció vertical a la politja alta", link: "https://www.youtube.com/watch?v=bNmvKpJSWKM", load: "3 sèries x 10 repeticions | Descans: 90s", desc: "Agafeu la barra ampla (prona). Estireu-la cap al pit, tirant colzes avall i endarrere per unir escàpules.", warning: "No feu impuls cap enrere amb l'esquena per ajudar a baixar el pes." },
+            { id: "gym-b2", title: "Premsa de Pit (Chest Press)", link: "https://www.youtube.com/watch?v=4ebUchShEDA", load: "3 sèries x 10 repeticions | Descans: 90s", desc: "Mantingueu espatlles en contacte amb el banc. Empenyeu fort i controleu el retorn en 3 segons.", warning: "No encongiu les espatlles cap amunt de les orelles." },
+            { id: "gym-b3", title: "Rem unilateral de peu amb manuella", link: "https://www.youtube.com/watch?v=hOBTkGA4mHE", load: "3 sèries x 10 reps/braç | Descans: 60s", desc: "Recolzeu genoll i mà esquerra al banc. Amb l'esquena paral·lela al terra, estireu la manuella portant el colze al maluc.", warning: "No roteu ni torceu l'esquena en pujar el pes." },
+            { id: "gym-b4", title: "Press Militar assegut", link: "https://www.youtube.com/watch?v=G0WZ6LgFE1c", load: "3 sèries x 10 repeticions | Descans: 90s", desc: "Inicieu des del nivell de les orelles. Empenyeu verticalment les dues manuelles de forma coordinada cap al sostre.", warning: "Eviteu separar l'esquena baixa del respatller en l'empenta." },
+            { id: "gym-b5", title: "Flexions (Push-ups)", link: "https://www.youtube.com/watch?v=v1w9xWn0NXE", load: "3 sèries x 10 repeticions | Descans: 60s", desc: "Amb el cos alineat en planxa, baixeu el pit mantenint els colzes en diagonal a uns 45 graus (mai oberts del tot).", warning: "No deixeu caure el maluc. Premeu abdomen i gluti amb fuerza." },
+            { id: "gym-b6", title: "Rotació Russa (Russian Twist)", link: "https://www.youtube.com/watch?v=aRUMRbl7KS4", load: "3 sèries x 10 rotacions/costat | Descans: 45s", desc: "Seieu amb genolls flexionats i tronc inclinat lleugerament enrere. Gireu a cada costat amb la pilota medicinal.", warning: "No corbeu l'esquena en forma de gepa; mantingueu el pit dret." },
+            { id: "gym-b7", title: "Planxa lateral dinàmica", link: "https://www.youtube.com/watch?v=XNxzAWnkvH0", load: "3 sèries x 10 reps/costat | Descans: 45s", desc: "Col·loqueu el colze sota l'espatlla. Eleveu el maluc fins a alinear el cos completament, baixeu i torneu a pujar de forma controlada.", warning: "Eviteu que el colze llisqui fora de la vertical de l'espatlla." }
+        ];
+
+        const fieldDrills1Data = [
+            {
+                id: "camp1-1",
+                title: "1. Esprint en Corba amb canvi d'orientació",
+                goal: "Capacitat de córrer a la màxima velocitat mantenint l'angle lateral corporal, acció clau per al desmarcatge.",
+                params: "Arc 15m + 10m recte | 3 sèries x 4 reps | Descans: 2m/rep, 3.5m/sèrie.",
+                desc: "Rodegeu la corba marcada al 100% de capacitat i acabeu amb 10m d'esprint recte.",
+                warning: "No deixeu que el peu exterior llisqui. Inclineu el tronc de manera natural cap a l'interior.",
+                diagramHTML: `
+                    <div class="tactical-board">
+                        <div class="field-half-line"></div>
+                        <div class="field-center-circle"></div>
+                        <div class="field-penalty-box-left"></div>
+                        <div class="cone" style="top: 20%; left: 15%;"></div>
+                        <div class="cone" style="top: 55%; left: 45%;"></div>
+                        <div class="cone" style="top: 80%; left: 70%;"></div>
+                        <div class="cone" style="top: 80%; left: 90%;"></div>
+                        <div class="player" style="top: 20%; left: 15%;"></div>
+                        <div class="absolute h-1 border-t-2 border-dashed border-white" style="top: 35%; left: 18%; width: 28%; transform: rotate(35deg); transform-origin: left;"></div>
+                        <div class="absolute h-1 border-t-2 border-dashed border-white" style="top: 55%; left: 45%; width: 26%; transform: rotate(30deg); transform-origin: left;"></div>
+                        <div class="absolute h-1 border-t-2 border-dashed border-white" style="top: 80%; left: 70%; width: 18%;"></div>
+                    </div>`
+            },
+            {
+                id: "camp1-2",
+                title: "2. Esprint Diagonal a 45 graus (Cutting)",
+                goal: "Treball d'agilitat planificada i plantat del peu exterior per a fintes diagonals.",
+                params: "30 metres totals | 3 sèries x 4 reps | Descans: 90s/rep, 3m/sèrie.",
+                desc: "Accelereu 10m, planteu ferm el peu, canvieu direcció a 45º, i torneu a tallar cap al cantó contrari.",
+                warning: "No col·lapseu el genoll cap endins. Baixeu el centre de gravetat.",
+                diagramHTML: `
+                    <div class="tactical-board">
+                        <div class="field-half-line"></div>
+                        <div class="field-center-circle"></div>
+                        <div class="cone" style="top: 20%; left: 15%;"></div>
+                        <div class="cone" style="top: 60%; left: 40%;"></div>
+                        <div class="cone" style="top: 20%; left: 65%;"></div>
+                        <div class="cone" style="top: 80%; left: 90%;"></div>
+                        <div class="player" style="top: 20%; left: 15%;"></div>
+                        <div class="absolute h-1 border-t-2 border-dashed border-white" style="top: 20%; left: 15%; width: 31%; transform: rotate(38deg); transform-origin: left;"></div>
+                        <div class="absolute h-1 border-t-2 border-dashed border-white" style="top: 60%; left: 40%; width: 31%; transform: rotate(-38deg); transform-origin: left;"></div>
+                        <div class="absolute h-1 border-t-2 border-dashed border-white" style="top: 20%; left: 65%; width: 30%; transform: rotate(50deg); transform-origin: left;"></div>
+                    </div>`
+            },
+            {
+                id: "camp1-3",
+                title: "3. Desacceleració Multidireccional (Harper's)",
+                goal: "Desenvolupament de la capacitat de frenada forta i canvi d'orientació immediat.",
+                params: "35 metres totals | 3 sèries x 3 reps | Descans: 2m/rep, 4m/sèrie.",
+                desc: "Esprint lineal 15m, frenada total en màxim 3 passes de transició. Correu 5m d'esquena, gireu i esprint diagonal de 15m.",
+                warning: "No estireu la cama de frenada totalment rígida per absorbir les forces d'impacte.",
+                diagramHTML: `
+                    <div class="tactical-board">
+                        <div class="field-half-line"></div>
+                        <div class="field-center-circle"></div>
+                        <div class="field-penalty-box-left"></div>
+                        <div class="cone" style="top: 30%; left: 15%;"></div>
+                        <div class="cone" style="top: 30%; left: 65%;"></div>
+                        <div class="cone" style="top: 60%; left: 50%;"></div>
+                        <div class="cone" style="top: 80%; left: 85%;"></div>
+                        <div class="player" style="top: 30%; left: 15%;"></div>
+                        <div class="absolute h-1 border-t-2 border-dashed border-white" style="top: 30%; left: 15%; width: 50%;"></div>
+                        <div class="absolute h-1 border-t-2 border-dashed border-yellow-300" style="top: 30%; left: 65%; width: 22%; transform: rotate(115deg); transform-origin: left;"></div>
+                        <div class="absolute h-1 border-t-2 border-dashed border-white" style="top: 60%; left: 50%; width: 44%; transform: rotate(20deg); transform-origin: left;"></div>
+                        <div class="absolute text-[8px] text-white top-[15%] left-[30%] bg-slate-800/80 px-1 rounded">Esprint</div>
+                        <div class="absolute text-[8px] text-yellow-300 top-[40%] left-[58%] bg-slate-800/80 px-1 rounded">Enrere</div>
+                        <div class="absolute text-[8px] text-white top-[65%] left-[62%] bg-slate-800/80 px-1 rounded">Esprint</div>
+                    </div>`
+            }
+        ];
+
+        const fieldDrills2Data = [
+            {
+                id: "camp2-1",
+                title: "1. Agilitat Reactiva 'Mirall' en diagonal",
+                goal: "Agilitat neuromuscular sota un estímul de decisió imprevisible.",
+                params: "Quadrat 8x8m | 4 sèries x 30s treball | Descans: 90s/rep, 3.5m/sèrie.",
+                desc: "Líder es mou de manera lliure fent esprints i canvis laterals. El company reacciona com un mirall per tapar el camí.",
+                warning: "Mantingueu sempre els genolls flexionats i no creueu mai els peus en els desplaçaments.",
+                diagramHTML: `
+                    <div class="tactical-board">
+                        <div class="field-half-line"></div>
+                        <div class="field-center-circle"></div>
+                        <div class="cone" style="top: 20%; left: 30%;"></div>
+                        <div class="cone" style="top: 20%; left: 70%;"></div>
+                        <div class="cone" style="top: 80%; left: 30%;"></div>
+                        <div class="cone" style="top: 80%; left: 70%;"></div>
+                        <div class="player" style="top: 35%; left: 50%;"></div>
+                        <div class="player-sombra" style="top: 65%; left: 50%;"></div>
+                        <div class="absolute top-[45%] left-[45%] text-white text-base">↔️</div>
+                    </div>`
+            },
+            {
+                id: "camp2-2",
+                title: "2. RSA amb Canvis de Direcció (Focus Miquel)",
+                goal: "Capacitat de repetir esprints a la màxima velocitat com un carriler de banda.",
+                params: "30 metres totals | 2 sèries x 6 reps | Descans: 25s passiu / 4m entre sèries.",
+                desc: "Esprint lineal 15m fins al Con 1, tall lateral diagonal de 5m fins al Con 2, i esprint lineal final de 10m fins al Con 3.",
+                warning: "No realitzeu l'esprint si sentiu una pèrdua d'equilibri o descontrol motor.",
+                diagramHTML: `
+                    <div class="tactical-board">
+                        <div class="field-half-line"></div>
+                        <div class="field-center-circle"></div>
+                        <div class="field-penalty-box-left"></div>
+                        <div class="cone" style="top: 25%; left: 10%;"></div>
+                        <div class="cone" style="top: 25%; left: 55%;"></div>
+                        <div class="cone" style="top: 75%; left: 40%;"></div>
+                        <div class="cone" style="top: 75%; left: 90%;"></div>
+                        <div class="player" style="top: 20%; left: 10%;"></div>
+                        <div class="absolute h-1 border-t-2 border-dashed border-white" style="top: 25%; left: 10%; width: 45%;"></div>
+                        <div class="absolute h-1 border-t-2 border-dashed border-white" style="top: 25%; left: 55%; width: 17%; transform: rotate(105deg); transform-origin: left;"></div>
+                        <div class="absolute h-1 border-t-2 border-dashed border-white" style="top: 75%; left: 40%; width: 50%;"></div>
+                    </div>`
+            },
+            {
+                id: "camp2-3",
+                title: "3. HIIT Intermitent 15\"/15\" en 'L' (Focus Pep)",
+                goal: "Potència aeròbica i talls a 90 graus simuladors del davanter.",
+                params: "60-65m cursa | 2 sèries x 7 minuts continus | 15s cursa / 15s descans.",
+                desc: "Correu al 85-90% de velocitat durant 15 segons formant una L (40m recte + gir 90º + 20m). Descansa 15 segons i torna.",
+                warning: "Ajusteu el ritme de carrera de forma contínua durant els 15 segons. No doneu batzegades.",
+                diagramHTML: `
+                    <div class="tactical-board">
+                        <div class="field-half-line"></div>
+                        <div class="field-center-circle"></div>
+                        <div class="field-penalty-box-right"></div>
+                        <div class="cone" style="top: 20%; left: 15%;"></div>
+                        <div class="cone" style="top: 20%; left: 80%;"></div>
+                        <div class="cone" style="top: 80%; left: 80%;"></div>
+                        <div class="player" style="top: 20%; left: 15%;"></div>
+                        <div class="absolute h-1 border-t-2 border-dashed border-white" style="top: 20%; left: 15%; width: 65%;"></div>
+                        <div class="absolute h-1 border-t-2 border-dashed border-white" style="top: 20%; left: 80%; width: 60%; transform: rotate(90deg); transform-origin: left;"></div>
+                        <div class="absolute text-[8px] text-white top-[8%] left-[45%] bg-slate-800/80 px-1 rounded">Cursa Recta (40m)</div>
+                        <div class="absolute text-[8px] text-white top-[50%] left-[82%] bg-slate-800/80 px-1 rounded whitespace-nowrap">Gir 90º (20m)</div>
+                    </div>`
+            }
+        ];
+
+        function createGymCards(data, containerId, listKey) {
+            const container = document.getElementById(containerId);
+            container.innerHTML = "";
+            data.forEach((ex, index) => {
+                const card = document.createElement('div');
+                card.id = ex.id;
+                card.className = "bg-white p-6 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-all flex flex-col justify-between";
+                
+                let buttonHTML = "";
+                if (ex.isDoubleVideo) {
+                    buttonHTML = `
+                        <div class="flex gap-2 mt-4">
+                            <a href="${ex.link1}" target="_blank" class="flex-1 text-center bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-xl text-sm transition shadow-sm">
+                                ▶️ Vídeo 1
+                            </a>
+                            <a href="${ex.link2}" target="_blank" class="flex-1 text-center bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-xl text-sm transition shadow-sm">
+                                ▶️ Vídeo 2
+                            </a>
+                        </div>
+                    `;
+                } else if (ex.link) {
+                    buttonHTML = `
+                        <div class="mt-4">
+                            <a href="${ex.link}" target="_blank" class="block w-full text-center bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-xl text-sm transition shadow-sm">
+                                ▶️ Veure Vídeo (YouTube)
+                            </a>
+                        </div>
+                    `;
+                }
+
+                card.innerHTML = `
+                    <div>
+                        <div class="flex justify-between items-start mb-3">
+                            <div class="flex items-center gap-3">
+                                <input type="checkbox" onchange="toggleCheckCard(this, '${ex.id}', '${listKey}')" class="w-6 h-6 rounded border-slate-300 text-blue-600 focus:ring-blue-500 cursor-pointer">
+                                <h3 class="text-xl font-bold text-slate-800">${index + 1}. ${ex.title}</h3>
+                            </div>
+                        </div>
+                        <p class="text-sm font-bold text-blue-600 mb-2 uppercase tracking-wide">⏱️ ${ex.load}</p>
+                        <p class="text-slate-600 text-[15px] mb-4 leading-relaxed">${ex.desc}</p>
+                        <div class="bg-rose-50 border-l-4 border-rose-500 p-3 rounded-r-lg text-sm text-rose-900 mb-4">
+                            <strong>⚠️ Ull amb:</strong> ${ex.warning}
+                        </div>
+                    </div>
+                    ${buttonHTML}
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function createFieldCards(data, containerId, listKey) {
+            const container = document.getElementById(containerId);
+            container.innerHTML = "";
+            data.forEach((drill) => {
+                const card = document.createElement('div');
+                card.id = drill.id;
+                card.className = "bg-white p-6 rounded-2xl border border-slate-100 shadow-sm hover:shadow-md transition-all flex flex-col lg:flex-row gap-6 items-center";
+
+                card.innerHTML = `
+                    <div class="w-full lg:w-5/12 flex-shrink-0 flex flex-col">
+                        ${drill.diagramHTML}
+                    </div>
+                    <div class="w-full lg:w-7/12 flex flex-col justify-between h-full">
+                        <div>
+                            <div class="flex justify-between items-start mb-2">
+                                <div class="flex items-center gap-3">
+                                    <input type="checkbox" onchange="toggleCheckCard(this, '${drill.id}', '${listKey}')" class="w-6 h-6 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500 cursor-pointer">
+                                    <h3 class="text-xl font-bold text-slate-800">${drill.title}</h3>
+                                </div>
+                            </div>
+                            <p class="text-emerald-700 font-semibold text-sm mb-2 pl-9">${drill.goal}</p>
+                            <p class="text-sm font-bold text-slate-500 mb-2 uppercase tracking-wide pl-9">⏱️ ${drill.params}</p>
+                            <div class="text-slate-700 text-[15px] mb-4 pl-9">${drill.desc}</div>
+                        </div>
+                        <div class="bg-rose-50 border-l-4 border-rose-500 p-3 rounded-r-lg text-sm text-rose-900 ml-9">
+                            <strong>⚠️ Ull amb:</strong> ${drill.warning}
+                        </div>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        // --- CHART JS SETUP ---
+        function initChart() {
+            const ctx = document.getElementById('periodizationChart').getContext('2d');
+            window.appChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['Setmana 1', 'Setmana 2', 'Setmana 3', 'Setmana 4', 'Setmana 5', 'Setmana 6'],
+                    datasets: [
+                        {
+                            label: 'Volum (Sessions/Hores)',
+                            data: [20, 40, 70, 100, 60, 30],
+                            backgroundColor: 'rgba(59, 130, 246, 0.2)',
+                            borderColor: 'rgb(59, 130, 246)',
+                            borderWidth: 2,
+                            borderRadius: 6,
+                            order: 3,
+                            yAxisID: 'y'
+                        },
+                        {
+                            label: 'Intensitat Teòrica (%)',
+                            data: [20, 40, 60, 80, 100, 90],
+                            type: 'line',
+                            fill: false,
+                            borderColor: 'rgb(244, 63, 94)',
+                            backgroundColor: 'rgb(244, 63, 94)',
+                            borderWidth: 3,
+                            tension: 0.4,
+                            pointRadius: 6,
+                            pointHoverRadius: 8,
+                            order: 2,
+                            yAxisID: 'y'
+                        },
+                        {
+                            label: 'Càrrega Real Miquel (UA)',
+                            data: [null, null, null, null, null, null],
+                            type: 'line',
+                            fill: false,
+                            borderColor: '#10b981', // Emerald
+                            backgroundColor: '#10b981',
+                            borderWidth: 3,
+                            borderDash: [5, 5],
+                            tension: 0.1,
+                            pointRadius: 7,
+                            pointHoverRadius: 9,
+                            order: 1,
+                            yAxisID: 'y1'
+                        },
+                        {
+                            label: 'Càrrega Real Pep (UA)',
+                            data: [null, null, null, null, null, null],
+                            type: 'line',
+                            fill: false,
+                            borderColor: '#f97316', // Orange
+                            backgroundColor: '#f97316',
+                            borderWidth: 3,
+                            borderDash: [5, 5],
+                            tension: 0.1,
+                            pointRadius: 7,
+                            pointHoverRadius: 9,
+                            order: 0,
+                            yAxisID: 'y1'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false,
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                            labels: { usePointStyle: true, padding: 15 }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) label += ': ';
+                                    if (context.parsed.y !== null) label += context.parsed.y;
+                                    return label;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            type: 'linear',
+                            position: 'left',
+                            beginAtZero: true,
+                            max: 110,
+                            grid: { color: '#f1f5f9' },
+                            title: { display: true, text: 'Nivell Teòric (%)', font: { weight: 'bold' } }
+                        },
+                        y1: {
+                            type: 'linear',
+                            position: 'right',
+                            beginAtZero: true,
+                            max: 2000,
+                            grid: { drawOnChartArea: false },
+                            title: { display: true, text: 'Unitats Arbitràries (UA)', font: { weight: 'bold' } }
+                        }
+                    }
+                }
+            });
+
+            // Llista d'exercicis globals generada una vegada
+            createGymCards(routineAData, 'container-rutina-A', 'A');
+            createGymCards(routineBData, 'container-rutina-B', 'B');
+            createFieldCards(fieldDrills1Data, 'container-camp-1', 'C1');
+            createFieldCards(fieldDrills2Data, 'container-camp-2', 'C2');
+        }
+    </script>
+</body>
+</html>
